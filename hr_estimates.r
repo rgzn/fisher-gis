@@ -37,33 +37,52 @@ fisher_points %>%
   st_crop(ynp_bbox) ->
   fisher_points
 
+# Write temporary file for qgis processing
 fisher_points %>% 
   st_write(tmp_file, append=FALSE)
 
-
+# Generate KDE
 qgis_run_algorithm(
   "qgis:heatmapkerneldensityestimation",
   INPUT = tmp_file,
   RADIUS = 400,
   KERNEL = 4,
   PIXEL_SIZE=20,
+  OUTPUT_VALUE=0,
   OUTPUT = output_file
 )
 
+
+### Plotting ###
 
 mapviewOptions(basemaps = c("OpenTopoMap",
                             "Esri.WorldShadedRelief", 
                             "Esri.WorldImagery"),
                na.color="#BEBEBE00")
-mapviewOptions()
-
-
+# mapviewOptions()
 
 hr_proxy<- read_stars(output_file,proxy=TRUE)
 hr_proxy %>% mapview(na.color="#BEBEBE00")
 
 hr <-read_stars(output_file,proxy=FALSE)
+quartiles <- hr$kde.tif %>% quantile(probs = seq(0, 1, 0.25), na.rm=TRUE)
+quintiles <- hr$kde.tif %>% quantile(probs = seq(0, 1, 0.2), na.rm=TRUE)
+deciles <- hr$kde.tif %>% quantile(probs = seq(0, 1, 0.1), na.rm=TRUE)
+twentiles <- hr$kde.tif %>% quantile(probs = seq(0, 1, 0.05), na.rm=TRUE)
+
+
+#isopleths = seq(0.0001,0.001,0.0001)
+#isopleths = c(0.0001,0.0008,0.0009,0.001)
+isopleths <-
+  c( quartiles[3], 
+     twentiles[17],
+     twentiles[20])
 hr %>% 
-  st_contour(contour_lines=FALSE, breaks = c(20,60,100)) %>% 
-  mapview(zcol = "Max",
-          at=c(10,30, 80,110))
+  st_contour(contour_lines=FALSE, breaks = isopleths) %>% 
+  mutate(idx = dplyr::row_number()) %>% 
+  mapview(zcol = "idx",
+          col.regions = RColorBrewer::brewer.pal(4,"YlOrRd"))
+
+
+# ifelse(is.finite(Max), Max, Min),
+# ifelse(is.finite(Min), Min, Max),
