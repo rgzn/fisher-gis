@@ -77,12 +77,29 @@ isopleths <-
   c( quartiles[3], 
      twentiles[17],
      twentiles[20])
+
+heatPal <- RColorBrewer::brewer.pal(4,"YlOrRd")
+opacityPal <- seq(0.4,0.8,0.1)
+
 hr %>% 
   st_contour(contour_lines=FALSE, breaks = isopleths) %>% 
-  mutate(idx = dplyr::row_number()) %>% 
+  mutate(idx = dplyr::row_number()) ->
+  hr_isopleths
+hr_isopleths %>% 
+  mutate(fill = heatPal[idx]) %>% 
+  mutate(`fill-opacity` = opacityPal[idx]) %>% 
+  mutate(class="Shape") %>%
+  mutate(name=idx,
+         `stroke-opacity` = 1,
+         creator="VAFLBF",
+         updated= 1.642639e+12,
+         `stroke-width`=0) %>% 
+  st_transform(4326) %>% 
+  st_write("hr2.geojson", append=FALSE)
+
+
+hr_isopleths%>% 
   mapview(zcol = "idx",
           col.regions = RColorBrewer::brewer.pal(4,"YlOrRd"))
 
 
-# ifelse(is.finite(Max), Max, Min),
-# ifelse(is.finite(Min), Min, Max),
